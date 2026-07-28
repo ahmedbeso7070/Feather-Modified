@@ -1,0 +1,45 @@
+name: Build Feather IPA
+
+on:
+  workflow_dispatch: {}   # run manually from the Actions tab
+  push:
+    branches: [ main ]    # also build automatically on push to main (remove if not wanted)
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repo (with submodules)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Select Xcode version
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Show Xcode / SDK info (debug)
+        run: |
+          xcodebuild -version
+          xcodebuild -showsdks
+
+      - name: Build & package IPA
+        run: |
+          make Feather
+
+      - name: Locate built IPA
+        id: find_ipa
+        run: |
+          IPA_PATH=$(find packages -name "*.ipa" | head -n 1)
+          echo "Found IPA at: $IPA_PATH"
+          echo "ipa_path=$IPA_PATH" >> "$GITHUB_OUTPUT"
+
+      - name: Upload IPA artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Feather-ipa
+          path: ${{ steps.find_ipa.outputs.ipa_path }}
+          if-no-files-found: error
